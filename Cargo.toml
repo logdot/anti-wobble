@@ -1,8 +1,20 @@
 [package]
-name = "patchy"
+name = "anti-wobble"
 version = "0.1.0"
 edition = "2021"
 
+[lib]
+crate-type = ["cdylib"]
+
+[features]
+1_151 = []
+1_163 = []
+
 [dependencies]
-libc = "0.2.*"
 mmap-rs = "0.6.*"
+
+[dependencies.windows]
+version = "0.*"
+features = [
+    "Win32_Foundation",
+]
