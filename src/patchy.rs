@@ -30,7 +30,7 @@ impl Patch {
 
         let mut mmap = MmapOptions::new(MmapOptions::page_size()).unwrap()
             .with_address(memory_cave)
-            .map_mut().unwrap();
+            .map_mut().expect("Unable to allocate memory map");
 
         let address = address as *mut u8;
 
@@ -38,7 +38,8 @@ impl Patch {
 
         // Write relative jump
         std::ptr::copy_nonoverlapping(NEAR_JUMP.as_ptr(), address, NEAR_JUMP.len());
-        let jump_offset = mem as i32 - address as i32 - 5;
+        let jump_offset = mem as isize - address as isize - 5;
+        let jump_offset: i32 = jump_offset.try_into().expect("Jump offset greater than 32 bits");
         std::ptr::copy_nonoverlapping(&jump_offset as *const _ as *const u8, address.add(1), 4);
 
         // Write nop slide
@@ -62,7 +63,8 @@ impl Patch {
 
         // Jump back to the original code
         std::ptr::copy_nonoverlapping(NEAR_JUMP.as_ptr(), mem.add(offset), NEAR_JUMP.len());
-        let jump_offset = address.add(size) as i32 - mem.add(offset) as i32 - 5;
+        let jump_offset = address.add(size) as isize - mem.add(offset) as isize - 5;
+        let jump_offset: i32 = jump_offset.try_into().expect("Jump offset greater than 32 bits");
         offset += NEAR_JUMP.len();
         std::ptr::copy_nonoverlapping(&jump_offset as *const _ as *const u8, mem.add(offset), 4);
 
@@ -78,7 +80,11 @@ impl Patch {
 
 /// Searches for a valid memory region that can be used for code within the 4GB address space for a jump.
 fn search_memory_cave(address: usize) -> Option<usize> {
-    (address-0x80000000..address+0x80000000).step_by(MmapOptions::allocation_granularity()).find(|address| {
+    // 0x80000000 is equivalent to 2GB
+    let lower_bound = address-0x80000000 + MmapOptions::allocation_granularity();
+    let upper_bound = address+0x80000000 - MmapOptions::allocation_granularity();
+
+    (lower_bound..upper_bound).step_by(MmapOptions::allocation_granularity()).find(|address| {
         MemoryAreas::query(*address).unwrap().is_none()
     })
 }
