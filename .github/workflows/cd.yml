@@ -1,0 +1,34 @@
+name: Cargo Build
+
+on:
+    push:
+        branches: "main"
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+    build:
+        name: "Build project"
+        runs-on: windows-latest
+        steps:
+            - uses: actions/checkout@v4
+              with:
+                submodules: 'true'
+            - run: rustup update stable
+            - run: |
+                mkdir 1_163\Modloader\mods
+                mkdir 1_151\Modloader\mods
+            - run: cargo test --verbose
+            - run: cargo build --verbose --release --features 1_151
+            - run: |
+                mv target\release\anti_wobble.dll 1_151\Modloader\mods\
+            - run: cargo build --verbose --release --features 1_163
+            - run: |
+                mv target\release\anti_wobble.dll 1_163\Modloader\mods\
+            - uses: actions/upload-artifact@v3
+              with:
+                name: anti_wobble
+                path: |
+                    1_163
+                    1_151
