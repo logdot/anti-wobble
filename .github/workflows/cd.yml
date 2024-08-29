@@ -26,7 +26,7 @@ jobs:
             - run: cargo build --verbose --release --features 1_163
             - run: |
                 mv target\release\anti_wobble.dll 1_163\Modloader\mods\
-            - uses: actions/upload-artifact@v3
+            - uses: actions/upload-artifact@v4
               with:
                 name: anti_wobble
                 path: |
