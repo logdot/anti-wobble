@@ -32,21 +32,30 @@ unsafe extern "system" fn DllMain(dll_module: HMODULE, call_reason: u32, _: *mut
 }
 
 unsafe extern "system" fn attach(handle: *mut c_void) -> u32 {
+    let mut address;
+    if cfg!(feature = "1_151") {
+        address = 0x1400240c0;
+    } else if cfg!(feature = "1_163") {
+        address = 0x1400256e0;
+    } else {
+        // Default to 1.163
+        address = 0x1400256e0;
+    }
+
     let mut old_protect = PAGE_PROTECTION_FLAGS(0);
 
     VirtualProtect(
-        0x1400240c0 as *mut c_void,
+        address as *mut c_void,
         0x100,
         PAGE_EXECUTE_READWRITE,
         &mut old_protect as *mut _,
     ).unwrap();
 
-    //let p = Patch::patch_call(0x14002525e, test as *const (), 6);
-    let p = Patch::patch_call(0x1400240c0, set_dumpable as *const (), 6);
+    let p = Patch::patch_call(address, set_dumpable as *const (), 6);
     std::mem::forget(p);
 
     VirtualProtect(
-        0x1400240c0 as *mut c_void,
+        address as *mut c_void,
         0x100,
         old_protect,
         &mut old_protect as *mut _,
@@ -56,9 +65,20 @@ unsafe extern "system" fn attach(handle: *mut c_void) -> u32 {
 }
 
 #[no_mangle]
+#[cfg(feature = "1_151")]
 unsafe extern fn set_dumpable() {
     asm! {
-        //"mov byte ptr [rcx + 0x91E], 0",
         "mov byte ptr [rsi + 0x8e6], 0",
+        out("rsi") _,
+    }
+}
+
+
+#[no_mangle]
+#[cfg(any(feature = "1_163", not(any(feature = "1_151", feature = "1_163"))))]
+unsafe extern fn set_dumpable() {
+    asm! {
+        "mov byte ptr [rsi + 0x91E], 0",
+        out("rsi") _,
     }
 }
